@@ -1,0 +1,29 @@
+import { useEffect, useRef, useState } from "react";
+import { socket } from "./services/socket";
+
+export default function useUnreadCount(currentChat) {
+  const [unread, setUnread] = useState({});
+  const focusedChat = useRef(currentChat);
+
+  useEffect(() => {
+    focusedChat.current = currentChat;
+    setUnread((prev) => ({ ...prev, [currentChat]: 0 }));
+  }, [currentChat]);
+
+  useEffect(() => {
+    const handler = (msg) => {
+      const chatKey = msg.room || msg.from;
+      if (chatKey !== focusedChat.current) {
+        setUnread((prev) => ({ ...prev, [chatKey]: (prev[chatKey] || 0) + 1 }));
+      }
+    };
+    socket.on("room-message", handler);
+    socket.on("private-message", handler);
+    return () => {
+      socket.off("room-message", handler);
+      socket.off("private-message", handler);
+    };
+  }, []);
+
+  return unread;
+}
